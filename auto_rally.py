@@ -348,6 +348,40 @@ def select_target(profiles):
     eligible.sort(key=lambda p: p["last_online"] or datetime.datetime.max)
     return eligible[0]
 
+# Account ORDER
+def get_switch_order(email, current_account):
+    accounts = ACCOUNT_ORDER.get(email)
+
+    if accounts is None:
+        raise ValueError(f"Unknown email: {email}")
+
+    if current_account not in accounts:
+        raise ValueError(
+            f"{current_account} not found in {email}"
+        )
+
+    index = accounts.index(current_account)
+
+    # Rotate list so current account is first
+    return accounts[index:] + accounts[:index]
+
+
+def print_order(email, current_account):
+    order = get_switch_order(email, current_account)
+
+    print(f"\nEmail: {email}")
+    print(f"Starting account: {current_account}")
+    print("-" * 35)
+
+    for i, account in enumerate(order, 1):
+        print(f"{i}. {account}")
+
+    print("-" * 35)
+    print(f"Next cycle starts at: {order[0]}")
+
+    return order
+
+
 
 # ==========================================
 #   LOCAL VERIFY & LOCATE (Stage C)
