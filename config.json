@@ -7,61 +7,61 @@
         {
           "name": "LilBee-1",
           "hq": "16",
-          "number": "21423843",
+          "number": "21423843"
         },
         {
           "name": "lilBee-2",
           "hq": "16",
-          "number": "21420411",
+          "number": "21420411"
         },
         {
           "name": "lilBee-3",
           "hq": "16",
-          "number": "21410183",
+          "number": "21410183"
         },
         {
           "name": "lilBee-4",
           "hq": "16",
-          "number": "21409026",
+          "number": "21409026"
         },
         {
           "name": "vhg133",
           "hq": "17",
-          "number": "19549030",
+          "number": "19549030"
         }
       ]
     },
     {
-        "email": "cleere4@ssh.com",
-        "password": "Cee12345",
-        "accounts": [
-          {
-            "name": "LilCee-16",
-            "hq": "16",
-            "number": "21211206",
-          },
-          {
-            "name": "LilCee-17",
-            "hq": "16",
-            "number": "21214585",
-          },
-          {
-            "name": "LilCee-18",
-            "hq": "16",
-            "number": "21215532",
-          },
-          {
-            "name": "LilCee-19",
-            "hq": "16",
-            "number": "21218141",
-          }
-          {
-            "name": "LilCee21",
-            "hq": "16",
-            "number": "21219362",
-          },
-        ]
-      },
+      "email": "cleere4@ssh.com",
+      "password": "Cee12345",
+      "accounts": [
+        {
+          "name": "LilCee-16",
+          "hq": "16",
+          "number": "21211206"
+        },
+        {
+          "name": "LilCee-17",
+          "hq": "16",
+          "number": "21214585"
+        },
+        {
+          "name": "LilCee-18",
+          "hq": "16",
+          "number": "21215532"
+        },
+        {
+          "name": "LilCee-19",
+          "hq": "16",
+          "number": "21218141"
+        },
+        {
+          "name": "LilCee21",
+          "hq": "16",
+          "number": "21219362"
+        }
+      ]
+    },
     {
       "email": "cleere5@ssh.com",
       "password": "Cee12344",
@@ -69,28 +69,28 @@
         {
           "name": "LilBee-06",
           "hq": "16",
-          "number": "21423851",
+          "number": "21423851"
         },
         {
           "name": "LilBee-07",
           "hq": "16",
-          "number": "21424994",
+          "number": "21424994"
         },
         {
           "name": "LilBee-08",
           "hq": "16",
-          "number": "21425145",
+          "number": "21425145"
         },
         {
           "name": "LilBee-10",
           "hq": "16",
-          "number": "21555877",
-        }
+          "number": "21555877"
+        },
         {
           "name": "LilCee-20",
           "hq": "17",
-          "number": "19477602",
-        },
+          "number": "19477602"
+        }
       ]
     },
     {
@@ -100,28 +100,28 @@
         {
           "name": "LilBee-11",
           "hq": "16",
-          "number": "19765819",
+          "number": "19765819"
         },
         {
           "name": "LilBee-12",
           "hq": "16",
-          "number": "21492735",
+          "number": "21492735"
         },
         {
           "name": "LilBee-13",
           "hq": "16",
-          "number": "21491742",
+          "number": "21491742"
         },
         {
           "name": "LilBee-14",
           "hq": "16",
-          "number": "21472318",
-        }
+          "number": "21472318"
+        },
         {
           "name": "LilBee-15",
           "hq": "16",
-          "number": "21472440",
-        },
+          "number": "21472440"
+        }
       ]
     },
     {
@@ -131,28 +131,28 @@
         {
           "name": "LilBee-16",
           "hq": "16",
-          "number": "21495526",
+          "number": "21495526"
         },
         {
           "name": "LilBee-17",
           "hq": "16",
-          "number": "21497246",
+          "number": "21497246"
         },
         {
           "name": "LilBee-18",
           "hq": "16",
-          "number": "21560010",
+          "number": "21560010"
         },
         {
           "name": "LilBee-19",
           "hq": "16",
-          "number": "21557755",
-        }
+          "number": "21557755"
+        },
         {
           "name": "LilBee-20",
           "hq": "16",
-          "number": "21557914",
-        },
+          "number": "21557914"
+        }
       ]
     },
     {
@@ -162,28 +162,28 @@
         {
           "name": "LilCee-22",
           "hq": "16",
-          "number": "21738964",
+          "number": "21738964"
         },
         {
           "name": "LilCee-23",
           "hq": "16",
-          "number": "21497247",
+          "number": "21497247"
         },
         {
           "name": "LilCee-24",
           "hq": "16",
-          "number": "21737471",
+          "number": "21737471"
         },
         {
           "name": "LilCee-25",
           "hq": "16",
-          "number": "21738575",
-        }
+          "number": "21738575"
+        },
         {
           "name": "LilCee-26",
           "hq": "16",
-          "number": "21739006",
-        },
+          "number": "21739006"
+        }
       ]
     },
     {
@@ -193,59 +193,28 @@
         {
           "name": "LilCee-27",
           "hq": "16",
-          "number": "21755290",
+          "number": "21755290"
         },
         {
           "name": "LilCee-28",
           "hq": "16",
-          "number": "21753597",
+          "number": "21753597"
         },
         {
           "name": "LilCee-29",
           "hq": "16",
-          "number": "21753733",
+          "number": "21753733"
         },
         {
           "name": "LilCee-30",
           "hq": "16",
-          "number": "21754462",
-        }
+          "number": "21754462"
+        },
         {
           "name": "LilCee-31",
           "hq": "16",
-          "number": "21755179",
-        },
-      ]
-    },
-    {
-      "email": "cleere9@ssh.com",
-      "password": "Cee12345",
-      "accounts": [
-        {
-          "name": "LilCee-27",
-          "hq": "16",
-          "number": "21755290",
-        },
-        {
-          "name": "LilCee-28",
-          "hq": "16",
-          "number": "21753597",
-        },
-        {
-          "name": "LilCee-29",
-          "hq": "16",
-          "number": "21753733",
-        },
-        {
-          "name": "LilCee-30",
-          "hq": "16",
-          "number": "21754462",
+          "number": "21755179"
         }
-        {
-          "name": "LilCee-31",
-          "hq": "16",
-          "number": "21755179",
-        },
       ]
     },
     {
@@ -255,28 +224,28 @@
         {
           "name": "LilCee-32",
           "hq": "16",
-          "number": "21755289",
+          "number": "21755289"
         },
         {
           "name": "LilCee-33",
           "hq": "16",
-          "number": "21741465",
+          "number": "21741465"
         },
         {
           "name": "LilCee-34",
           "hq": "16",
-          "number": "21754461",
+          "number": "21754461"
         },
         {
           "name": "LilCee-35",
           "hq": "16",
-          "number": "21753732",
-        }
+          "number": "21753732"
+        },
         {
           "name": "LilCee-36",
           "hq": "16",
-          "number": "21755178",
-        },
+          "number": "21755178"
+        }
       ]
     },
     {
@@ -286,103 +255,94 @@
         {
           "name": "LilCee-37",
           "hq": "16",
-          "number": "21895784",
+          "number": "21895784"
         },
         {
           "name": "LilCee-38",
           "hq": "16",
-          "number": "21917073",
+          "number": "21917073"
         },
         {
           "name": "LilCee-39",
           "hq": "16",
-          "number": "21917296",
+          "number": "21917296"
         },
         {
           "name": "LilCee-40",
           "hq": "16",
-          "number": "21919797",
-        }
+          "number": "21919797"
+        },
         {
           "name": "LilCee-41",
           "hq": "16",
-          "number": "21920244",
-        },
+          "number": "21920244"
+        }
       ]
-    },
-}
-{
-    "ACCOUNT_ORDER" = {
-      "cleere1@ssh.com": [
-        "VHG133",
-        "LilBee-4",
-        "LilBee-3",
-        "LilBee-2",
-        "LilBee-1",
-      ],
-
-      "cleere4@ssh.com": [
-        "LilCee-16",
-        "LilCee-17",
-        "LilCee-18",
-        "LilCee-19",
-        "LilCee21",
-      ],
-
-      "cleere5@ssh.com": [
-        "LilCee-20",
-        "LilBee-06",
-        "LilBee-07",
-        "LilBee-08",
-        "LilBee-10",
-      ],
-
-      "cleere6@ssh.com": [
-        "LilBee-11",
-        "LilBee-14",
-        "LilBee-15",
-        "LilBee-13",
-        "LilBee-12",
-      ],
-
-      "cleere7@ssh.com": [
-        "LilBee-16",
-        "LilBee-17",
-        "LilBee-19",
-        "LilBee-20",
-        "LilBee-18",
-      ],
-
-      "cleere8@ssh.com": [
-        "LilCee-23",
-        "LilCee-24",
-        "LilCee-25",
-        "LilCee-22",
-        "LilCee-26",
-      ],
-
-      "cleere9@ssh.com": [
-        "LilCee-28",
-        "LilCee-29",
-        "LilCee-30",
-        "LilCee-31",
-        "LilCee-27",
-      ],
-
-      "cleere10@ssh.com": [
-        "LilCee-33",
-        "LilCee-35",
-        "LilCee-34",
-        "LilCee-36",
-        "LilCee-32",
-      ],
-
-      "cleere12@ssh.com": [
-        "LilCee-37",
-        "LilCee-38",
-        "LilCee-39",
-        "LilCee-40",
-        "LilCee-41",
-      ],
-}
     }
+  ],
+  "ACCOUNT_ORDER": {
+    "cleere1@ssh.com": [
+      "VHG133",
+      "LilBee-4",
+      "LilBee-3",
+      "LilBee-2",
+      "LilBee-1"
+    ],
+    "cleere4@ssh.com": [
+      "LilCee-16",
+      "LilCee-17",
+      "LilCee-18",
+      "LilCee-19",
+      "LilCee21"
+    ],
+    "cleere5@ssh.com": [
+      "LilCee-20",
+      "LilBee-06",
+      "LilBee-07",
+      "LilBee-08",
+      "LilBee-10"
+    ],
+    "cleere6@ssh.com": [
+      "LilBee-11",
+      "LilBee-14",
+      "LilBee-15",
+      "LilBee-13",
+      "LilBee-12"
+    ],
+    "cleere7@ssh.com": [
+      "LilBee-16",
+      "LilBee-17",
+      "LilBee-19",
+      "LilBee-20",
+      "LilBee-18"
+    ],
+    "cleere8@ssh.com": [
+      "LilCee-23",
+      "LilCee-24",
+      "LilCee-25",
+      "LilCee-22",
+      "LilCee-26"
+    ],
+    "cleere9@ssh.com": [
+      "LilCee-28",
+      "LilCee-29",
+      "LilCee-30",
+      "LilCee-31",
+      "LilCee-27"
+    ],
+    "cleere10@ssh.com": [
+      "LilCee-33",
+      "LilCee-35",
+      "LilCee-34",
+      "LilCee-36",
+      "LilCee-32"
+    ],
+    "cleere12@ssh.com": [
+      "LilCee-37",
+      "LilCee-38",
+      "LilCee-39",
+      "LilCee-40",
+      "LilCee-41"
+    ]
+  }
+}

@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -10,21 +9,18 @@ import time
 import cv2
 import numpy as np
 
-from ocr import ocr_scan
-
-#ACCOUNT
+# ACCOUNT
 CONFIG_PATH = "config.json"
+LOG_PATH = "log.json"
 
 with open(CONFIG_PATH, encoding="utf-8") as f:
     _cfg = json.load(f)
 
-account = {
-    a["admiral_no"]: [a["name"], a["password"]]
-    for a in _cfg["accounts"]
-}
+emails = _cfg["emails"]
+ACCOUNT_ORDER = _cfg["ACCOUNT_ORDER"]
 
 
-#CONFIG TAP
+# CONFIG TAP
 
 PROFILE = (75, 205)
 BASE = (664, 1510)
@@ -37,24 +33,27 @@ AUTO_RALLY_ICON = (480, 1333)
 AUTO_RALLY = (540, 195)
 START_RALLY = (352, 1495)
 RANDOM_TAP = (675, 1430)
-LOGOUT = (357, 915)
+LOGOUT = (357, 936)
 CONFIRM_LOGOUT = (513, 1185)
 
 
-#LOGIN
+# LOGIN
 SIGN_IN_TO_EMAIL = (367, 1074)
-EMAIL = (392, 772)
+EMAIL = (447, 751)
 LOGIN_BUTTON = (350, 981)
-PASSWORD = (231, 817)
-CONFIRM_LOGIN = (345, 982)
+PASSWORD = (457, 935)
+CONFIRM_LOGIN = (345, 945)
 
-# ROTATION CONFIG
-DB_PATH = "profiles.json"
-SCAN_IMG = "scan_screen.png"
-MATCH_THRESHOLD = 0.95   # local template verify: unchanged row = 1.0 (lossless PNG);
-                         # highest cross-row false-match measured = 0.933
-LOGIN_TIMEOUT = 40       # seconds to wait for game load after ENTER
-MAX_FAILS = 3            # profile excluded after this many failed switches
+# CHANGE ADMIRAL ROW TAPS
+# ⚠️ TUNE these — tap position of each account row on the Change Admiral list
+# (screen 720x1612). Row 1 = top row. Adjust until taps land on the right rows.
+ROW_TAPS = [
+    (360, 312),   # row 1 (top)
+    (360, 548),   # row 2
+    (360, 716),   # row 3
+    (360, 854),   # row 4
+    (360, 980),  # row 5
+]
 
 # Name lookup for debug printing
 TAP_NAMES = {
@@ -78,19 +77,29 @@ TAP_NAMES = {
     CONFIRM_LOGIN:   "CONFIRM_LOGIN",
 }
 
-# OCR text patterns
-NAME_RE = re.compile(r"^(?P<name>[A-Za-z0-9][\w\-]*)\s*\(Server\s*(?P<server>\d+)\)", re.I)
-HQ_RE = re.compile(r"^Lv\.?\s*(?P<hq>\d+)\s*HQ$", re.I)
-ONLINE_RE = re.compile(r"^online$", re.I)
-DURATION_RE = re.compile(
-    r"^(?:(?P<h>\d{1,2}):(?P<m>\d{2}):(?P<s>\d{2})"
-    r"|(?P<d>\d+)\s*days?"
-    r"|(?P<hr>\d+)\s*hours?"
-    r"|(?P<mi>\d+)\s*mins?"
-    r"|(?P<se>\d+)\s*secs?"
-    r"|just\s*now)\s*ago$",
-    re.I,
-)
+
+def validate_config():
+    for entry in emails:
+        email = entry["email"]
+        base = ACCOUNT_ORDER.get(email)
+        if base is None:
+            raise ValueError(f"ACCOUNT_ORDER missing for {email}")
+        if len(base) > len(ROW_TAPS):
+            raise ValueError(
+                f"ACCOUNT_ORDER for {email} has {len(base)} accounts "
+                f"but only {len(ROW_TAPS)} ROW_TAPS defined"
+            )
+        names = {a["name"].lower() for a in entry["accounts"]}
+        unknown = [n for n in base if n.lower() not in names]
+        if unknown:
+            raise ValueError(f"ACCOUNT_ORDER for {email} has unknown accounts: {unknown}")
+        missing = sorted(a["name"] for a in entry["accounts"]
+                         if a["name"].lower() not in {b.lower() for b in base})
+        if missing:
+            raise ValueError(f"accounts of {email} missing from ACCOUNT_ORDER: {missing}")
+
+
+validate_config()
 
 
 def tap(x, y):
@@ -102,24 +111,6 @@ def go_back():
     print("   ⬅️ Swiping BACK (left edge)")
     # Swipe from left edge inward — reliable on gesture-navigation Android
     subprocess.run(["adb", "shell", "input", "swipe", "0", "800", "400", "800", "100"])
-
-def screencap(path=SCAN_IMG):
-    """Capture the device screen to path and return it as a BGR array."""
-    try:
-        raw = subprocess.check_output(["adb", "exec-out", "screencap", "-p"])
-        with open(path, "wb") as f:
-            f.write(raw)
-        img = cv2.imread(path)
-        if img is None:
-            print("❌ screencap decode failed")
-        return img
-    except Exception as e:
-        print(f"❌ screencap error: {e}")
-        return None
-
-def took_screenshot():
-    # Took screenshots, then it would send into ocr
-    return screencap()
 
 def input_email(email):
     subprocess.run(["adb", "shell", "input", "text", email])
@@ -133,381 +124,186 @@ def delete_input():
 
 
 # ==========================================
-#   PROFILE DATABASE (persistent)
+#   SCREEN DETECTION (template matching)
 # ==========================================
 
-def load_db():
-    if os.path.exists(DB_PATH):
-        try:
-            with open(DB_PATH, "r") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError) as e:
-            print(f"⚠️ Could not read {DB_PATH}: {e} — starting fresh")
-    return {}
-
-def save_db(db):
-    tmp = DB_PATH + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(db, f, indent=2, sort_keys=True)
-    os.replace(tmp, DB_PATH)
-
-db = load_db()
-
-
-def update_db(profiles, account_id):
-    """Merge a fresh scan into the DB. Returns profiles enriched with fail_count."""
-    acct = db.setdefault(str(account_id), {})
-    now_iso = datetime.datetime.now().isoformat(timespec="seconds")
-    enriched = []
-    for p in profiles:
-        rec = acct.get(p["name"], {})
-        rec.update({
-            "server": p["server"],
-            "hq": p["hq"],
-            "rank": p["rank"],
-            "status": p["status"],
-            "last_online": p["last_online"].isoformat(timespec="seconds") if p["last_online"] else None,
-            "last_status_text": p["status_text"],
-            "account_id": account_id,
-            "updated_at": now_iso,
-        })
-        rec.setdefault("fail_count", 0)
-        rec.setdefault("last_login_success", None)
-        acct[p["name"]] = rec
-        e = dict(p)
-        e["fail_count"] = rec["fail_count"]
-        e["last_login_success"] = rec["last_login_success"]
-        enriched.append(e)
-    save_db(db)
-    return enriched
-
-
-def mark_fail(name, account_id):
-    rec = db.get(str(account_id), {}).get(name)
-    if rec is not None:
-        rec["fail_count"] = rec.get("fail_count", 0) + 1
-        rec["last_login_success"] = False
-        save_db(db)
-        print(f"   ❌ {name} fail_count = {rec['fail_count']}/{MAX_FAILS}")
-
-
-def mark_success(name, account_id):
-    rec = db.get(str(account_id), {}).get(name)
-    if rec is not None:
-        rec["fail_count"] = 0
-        rec["last_login_success"] = True
-        rec["status"] = "online"
-        rec["last_online"] = datetime.datetime.now().isoformat(timespec="seconds")
-        save_db(db)
-
-
-# ==========================================
-#   SCAN & PARSE (Stage A)
-# ==========================================
-
-def parse_duration(text):
-    """'21:27:46 ago' / '2 days ago' -> seconds (None if unknown)."""
-    m = DURATION_RE.match(text.strip())
-    if not m:
+def screencap():
+    """Capture screen -> BGR numpy array, or None on failure."""
+    try:
+        raw = subprocess.check_output(["adb", "exec-out", "screencap", "-p"])
+        img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
+        return img
+    except Exception as e:
+        print(f"❌ screencap failed: {e}")
         return None
-    if m.group("h") is not None:
-        return int(m.group("h")) * 3600 + int(m.group("m")) * 60 + int(m.group("s"))
-    if m.group("d") is not None:
-        return int(m.group("d")) * 86400
-    if m.group("hr") is not None:
-        return int(m.group("hr")) * 3600
-    if m.group("mi") is not None:
-        return int(m.group("mi")) * 60
-    if m.group("se") is not None:
-        return int(m.group("se"))
-    return 0  # just now
 
 
-def parse_profiles(rows, now=None):
-    """Group OCR text blocks into profile records with a tappable row bbox."""
-    now = now or datetime.datetime.now()
-    boxes = [r for r in rows if r.get("bbox")]
-    named = []
-    for r in boxes:
-        m = NAME_RE.match(r["text"].strip())
-        if m:
-            named.append((r, m))
+def find_btn(paths, threshold=0.75):
+    """Match templates against the live screen.
 
-    profiles = []
-    for r, m in named:
-        x1, y1, x2, y2 = r["bbox"]
-        # candidate blocks belonging to this row: below the name, within ~100px
-        below = [b for b in boxes if b is not r and y2 - 5 <= b["bbox"][1] <= y2 + 100]
-
-        hq = None
-        hq_y = None
-        status = None
-        status_text = None
-        rank = None
-
-        # rank sits on the name line, to the right of the name
-        for b in boxes:
-            if b is r:
-                continue
-            bx1, by1, bx2, by2 = b["bbox"]
-            if bx1 > x2 and by1 <= y2 and by2 >= y1 and len(b["text"]) < 15:
-                rank = b["text"].strip()
-
-        for b in below:
-            t = b["text"].strip()
-            bm = HQ_RE.match(t)
-            if bm and (hq is None or b["bbox"][1] < hq_y):
-                hq = int(bm.group("hq"))
-                hq_y = b["bbox"][1]
-                continue
-            if ONLINE_RE.match(t):
-                status, status_text = "online", t
-            elif DURATION_RE.match(t):
-                secs = parse_duration(t)
-                if secs is not None:
-                    status, status_text = "offline", t
-
-        if status is None:
-            # no status text found — treat as offline, lowest priority (now)
-            status, status_text = "unknown", ""
-
-        if status == "online":
-            last_online = now
-        elif status == "offline" and status_text:
-            secs = parse_duration(status_text)
-            last_online = now - datetime.timedelta(seconds=secs if secs is not None else 0)
-        else:
-            last_online = now  # unknown -> processed last
-
-        # union bbox of name + hq + status blocks = tappable row region
-        parts = [r["bbox"]]
-        for b in below:
-            t = b["text"].strip()
-            if HQ_RE.match(t) or ONLINE_RE.match(t) or DURATION_RE.match(t):
-                parts.append(b["bbox"])
-        rx1 = min(p[0] for p in parts)
-        ry1 = min(p[1] for p in parts)
-        rx2 = max(p[2] for p in parts)
-        ry2 = max(p[3] for p in parts)
-
-        profiles.append({
-            "name": m.group("name"),
-            "server": int(m.group("server")),
-            "hq": hq,
-            "rank": rank,
-            "status": status,
-            "status_text": status_text,
-            "last_online": last_online,
-            "row_bbox": (rx1, ry1, rx2, ry2),
-        })
-    return profiles
-
-
-def cloud_scan(retries=2):
-    """Screencap + cloud OCR + parse. Returns (img, profiles, title_bbox)."""
-    for attempt in range(retries):
-        img = screencap()
-        if img is None:
-            time.sleep(2)
-            continue
-        try:
-            rows = ocr_scan(SCAN_IMG, image_size=(img.shape[1], img.shape[0]))
-        except Exception as e:
-            print(f"❌ OCR failed ({e}) — attempt {attempt + 1}/{retries}")
-            time.sleep(3)
-            continue
-        profiles = parse_profiles(rows)
-        title_bbox = next(
-            (r["bbox"] for r in rows if r["text"].strip().lower() == "change admiral"),
-            None,
-        )
-        return img, profiles, title_bbox
-    return None, [], None
-
-
-def print_lro(profiles):
-    """Print the Least-Recently-Online priority table."""
-    eligible = [p for p in profiles if p["status"] == "offline" and p["fail_count"] < MAX_FAILS]
-    eligible.sort(key=lambda p: p["last_online"] or datetime.datetime.max)
-    print("\n   LRO priority:")
-    if not eligible:
-        print("     (no eligible offline profiles)")
-    for i, p in enumerate(eligible, 1):
-        print(f"     {i}. {p['name']:<12} last online {p['status_text']:<14} fails={p['fail_count']}")
-    online = [p["name"] for p in profiles if p["status"] == "online"]
-    if online:
-        print(f"     (online: {', '.join(online)})")
-    return eligible
-
-
-def select_target(profiles):
-    """Stage B: the offline profile that has been offline the longest."""
-    eligible = [p for p in profiles if p["status"] == "offline" and p["fail_count"] < MAX_FAILS]
-    if not eligible:
-        return None
-    eligible.sort(key=lambda p: p["last_online"] or datetime.datetime.max)
-    return eligible[0]
-
-# Account ORDER
-def get_switch_order(email, current_account):
-    accounts = ACCOUNT_ORDER.get(email)
-
-    if accounts is None:
-        raise ValueError(f"Unknown email: {email}")
-
-    if current_account not in accounts:
-        raise ValueError(
-            f"{current_account} not found in {email}"
-        )
-
-    index = accounts.index(current_account)
-
-    # Rotate list so current account is first
-    return accounts[index:] + accounts[:index]
-
-
-def print_order(email, current_account):
-    order = get_switch_order(email, current_account)
-
-    print(f"\nEmail: {email}")
-    print(f"Starting account: {current_account}")
-    print("-" * 35)
-
-    for i, account in enumerate(order, 1):
-        print(f"{i}. {account}")
-
-    print("-" * 35)
-    print(f"Next cycle starts at: {order[0]}")
-
-    return order
-
-
-
-# ==========================================
-#   LOCAL VERIFY & LOCATE (Stage C)
-# ==========================================
-
-def locate_target(scan_img, profiles, target):
-    """Find target's CURRENT position on a fresh screenshot via template match.
-
-    Returns (x, y) tap coords, or None if layout changed / not found.
-    The row template comes from the scan image (exact same pixels as the
-    OCR coordinates), so a correct match scores ~1.0. If the list re-sorted
-    after a switch, matchTemplate finds the row at its NEW position.
+    paths: list of template file names (relative to cwd).
+    Returns (x, y) center of the best match >= threshold, else None.
     """
-    name = target["name"]
-    match = next((p for p in profiles if p["name"] == name), None)
-    if match is None:
-        return None
-
-    x1, y1, x2, y2 = match["row_bbox"]
-    tpl = scan_img[y1:y2, x1:x2]
-    if tpl.size == 0:
-        return None
-    tpl_gray = cv2.cvtColor(tpl, cv2.COLOR_BGR2GRAY)
-
     screen = screencap()
     if screen is None:
         return None
-    screen_gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
 
-    if tpl_gray.shape[0] > screen_gray.shape[0] or tpl_gray.shape[1] > screen_gray.shape[1]:
-        return None
+    best = (None, 0.0, None)  # (path, score, center)
+    for path in paths:
+        tmpl = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+        if tmpl is None:
+            print(f"⚠️ template missing: {path}")
+            continue
+        if (gray.shape[0] < tmpl.shape[0] or gray.shape[1] < tmpl.shape[1]):
+            continue
+        res = cv2.matchTemplate(gray, tmpl, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+        cx = max_loc[0] + tmpl.shape[1] // 2
+        cy = max_loc[1] + tmpl.shape[0] // 2
+        print(f"   🔍 {path}: score {max_val:.2f} @ ({cx}, {cy})")
+        if max_val > best[1]:
+            best = (path, max_val, (cx, cy))
 
-    res = cv2.matchTemplate(screen_gray, tpl_gray, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(res)
-
-    if max_val < MATCH_THRESHOLD:
-        print(f"   ⚠️ layout changed for {name} (score {max_val:.2f}) — needs rescan")
-        return None
-
-    cx = max_loc[0] + tpl_gray.shape[1] // 2
-    cy = max_loc[1] + tpl_gray.shape[0] // 2
-    print(f"   ✔ located {name} at ({cx}, {cy}) | score {max_val:.2f}")
-    return (cx, cy)
-
-
-def wait_for_game(title_bbox, timeout=LOGIN_TIMEOUT):
-    """Poll until the Change Admiral title is gone (= we are in game)."""
-    if title_bbox is None:
-        time.sleep(timeout)
-        return True
-    x1, y1, x2, y2 = title_bbox
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        screen = screencap("verify_screen.png")
-        if screen is not None:
-            tpl = cv2.cvtColor(screen[y1:y2, x1:x2], cv2.COLOR_BGR2GRAY)
-            g = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
-            if tpl.size and tpl.shape[0] <= g.shape[0] and tpl.shape[1] <= g.shape[1]:
-                res = cv2.matchTemplate(g, tpl, cv2.TM_CCOEFF_NORMED)
-                _, max_val, _, _ = cv2.minMaxLoc(res)
-                if max_val < MATCH_THRESHOLD:
-                    print("   ✔ menu gone — game loaded")
-                    return True
-        time.sleep(4)
-    print(f"   ❌ still on menu after {timeout}s")
-    return False
+    path, score, center = best
+    if center and score >= threshold:
+        print(f"✔ FOUND {path} | score {score:.2f} | tap {center}")
+        return center
+    print(f"❌ no match >= {threshold} (best {score:.2f})")
+    return None
 
 
-def switch_profile(target, account_id, scan=None):
-    """Locate (with rescan fallback), tap, ENTER, verify login. Returns success.
+def tap_detected(paths, fallback, threshold=0.75):
+    """Detect a button and tap it; fall back to fixed coords if not found."""
+    pos = find_btn(paths, threshold)
+    if pos is None:
+        print(f"   ↪️ fallback tap {fallback}")
+        pos = fallback
+    tap(*pos)
+    return pos
 
-    scan = (img, profiles, title_bbox) from the caller's existing cloud scan,
-    so we only spend another OCR request if the local locate fails.
-    """
-    print(f"\n→ Switching to {target['name']} ({target['status_text']})")
 
-    if scan is None:
-        scan = cloud_scan()
-    img, profiles, title_bbox = scan
-    if not profiles:
-        print("   ❌ scan failed — skipping")
-        mark_fail(target["name"], account_id)
-        return False
+# ==========================================
+# ==========================================
 
-    fresh = next((p for p in profiles if p["name"] == target["name"]), None)
-    if fresh is None:
-        print(f"   ❌ {target['name']} disappeared from list")
-        mark_fail(target["name"], account_id)
-        return False
-    if fresh["status"] == "online":
-        print(f"   ⏭️ {target['name']} already online — skipping")
-        return False
+def load_log():
+    if os.path.exists(LOG_PATH):
+        try:
+            with open(LOG_PATH, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            print(f"⚠️ Could not read {LOG_PATH}: {e} — starting fresh")
+    return {}
 
-    loc = locate_target(img, profiles, fresh)
-    if loc is None:
-        # layout shifted between OCR and now — one more scan
-        print("   ⚠️ locate failed — rescanning once")
-        scan = cloud_scan()
-        img, profiles, title_bbox = scan
-        fresh = next((p for p in profiles if p["name"] == target["name"]), None) if profiles else None
-        if fresh is None:
-            mark_fail(target["name"], account_id)
-            return False
-        loc = locate_target(img, profiles, fresh)
-        if loc is None:
-            mark_fail(target["name"], account_id)
-            return False
+def save_log(email, account):
+    payload = {
+        "email": email,
+        "account": account,
+        "updated_at": datetime.datetime.now().isoformat(timespec="seconds"),
+    }
 
-    tap(*loc)
+    log = {
+        "email": email,
+        "account": current,
+        "completed": True,
+        "updated_at": datetime.datetime.now().isoformat(timespec="seconds")
+    }
+
+    tmp = LOG_PATH + ".tmp"
+
+    with open(tmp, "w") as f:
+        json.dump(payload, f, indent=2)
+    os.replace(tmp, LOG_PATH)
+    print(f"   📝 log.json ← {email} / {account}")
+
+    
+
+def resolve_resume():
+    """Resume from the next email after the last completed email."""
+    log = load_log()
+
+    last_email = log.get("email")
+
+    if not last_email:
+        print("Starting fresh.")
+        return 0, None
+
+    for i, entry in enumerate(emails):
+        if entry["email"] == last_email:
+
+            # Legacy logs without completed flag are treated as completed.
+            completed = log.get("completed", True)
+
+            if completed:
+                next_idx = i + 1
+
+                if next_idx >= len(emails):
+                    print("✅ All emails completed.")
+                    return len(emails), None
+
+                print(f"🔁 Last completed: {last_email}")
+                print(f"➡️ Continuing with: {emails[next_idx]['email']}")
+
+                return next_idx, None
+
+            print(f"⚠️ {last_email} was interrupted.")
+            print(f"➡️ Resuming: {last_email}")
+
+            return i, None
+
+    print(f"⚠️ Email {last_email} not found. Starting fresh.")
+    return 0, None
+
+# ==========================================
+#   ACCOUNT ORDER (active account first)
+# ==========================================
+
+def build_order(base, current):
+    """Processing/screen order: active account pinned first, rest keep ACCOUNT_ORDER."""
+    if current not in base:
+        raise ValueError(f"{current!r} not found in ACCOUNT_ORDER")
+    return [current] + [a for a in base if a != current]
+
+
+def print_plan(email, base, current):
+    order = build_order(base, current)
+    print(f"\nEmail: {email}")
+    print(f"Active account: {current}")
+    print("-" * 35)
+    for i, name in enumerate(order, 1):
+        suffix = "  (active)" if i == 1 else ""
+        print(f"  {i}. {name}{suffix}")
+    print("-" * 35)
+    return order
+
+
+def switch_to(target, base, current):
+    """Tap target's row (active-first layout), then ENTER. Returns new current."""
+    screen = build_order(base, current)
+    row = screen.index(target)
+    if row >= len(ROW_TAPS):
+        raise ValueError(f"no ROW_TAPS entry for row {row + 1} ({target})")
+    x, y = ROW_TAPS[row]
+    print(f"\n→ Switching to {target} (row {row + 1})")
+    tap(x, y)
     time.sleep(2)
     tap(*ENTER_USER)
     time.sleep(2)
     print("Waiting for profile to load...")
-
-
-    mark_success(target["name"], account_id)
-    print(f"   ✔ {target['name']} is now online")
-    return True
+    return target
 
 
 # ==========================================
-#   MENU NAVIGATION (Stage D)
+#   MENU NAVIGATION
 # ==========================================
 
 def open_change_admiral():
     """In-game -> Change Admiral profile list."""
+    #Wait account open first
+    time.sleep(10)
+    for _ in range(4):
+        tap(*RANDOM_TAP)
+        time.sleep(1)
     tap(*PROFILE)
     time.sleep(3)
     tap(*SETTINGS)
@@ -525,39 +321,13 @@ def back_to_game():
         time.sleep(2)
 
 
-def rotate_profiles(account_id):
-    """Process every offline profile of this account, oldest-offline first."""
-    open_change_admiral()
-
-    while True:
-        scan = cloud_scan()
-        img, profiles, title_bbox = scan
-        if img is None or not profiles:
-            print("❌ scan failed or no profiles found — stopping rotation")
-            break
-
-        profiles = update_db(profiles, account_id)
-        print_lro(profiles)
-
-        target = select_target(profiles)
-        if target is None:
-            print("\n✅ no more eligible offline profiles — rotation done")
-            break
-
-        if not switch_profile(target, account_id, scan=scan):
-            continue
-
-        # Stage D: run auto rally on the freshly logged-in profile,
-        # then return to the profile list and re-scan.
-        asyncio.run(auto_rally())
-        open_change_admiral()
-
-    back_to_game()
-
-
 def logout():
     try:
         print("Logging out from account ...")
+        time.sleep(10)
+        for _ in range(4):
+            tap(*RANDOM_TAP)
+            time.sleep(1)
 
         tap(*PROFILE)
         time.sleep(3)
@@ -572,54 +342,52 @@ def logout():
         time.sleep(3)
 
         tap(*CONFIRM_LOGOUT)
-        time.sleep(10)
+        time.sleep(25)
 
     except KeyboardInterrupt:
         print("Program stopped by user")
         sys.exit(0)
 
-def login(account_id=1):
+def login(entry):
     try:
-        email = account[account_id][0]
-        password = account[account_id][1]
+        email = entry["email"]
+        password = entry["password"]
 
-        print(f"Login into account {account_id} ({email}) ...")
+        print(f"Login into {email} ...")
         tap(*RANDOM_TAP)
-        time.sleep(3)
+        time.sleep(0.5)
 
-        tap(*SIGN_IN_TO_EMAIL)
+        # Detect "Sign in with Email" (appears in 2 positions across states)
+        tap_detected(["signin_btn_1.png", "signin_btn_2.png"], SIGN_IN_TO_EMAIL)
         time.sleep(3)
 
         tap(*EMAIL)
-        time.sleep(3)
-
-        delete_input()  # clear previous email
-        time.sleep(0.5)
-
-        input_email(email)
-        time.sleep(2)
-
-        tap(*LOGIN_BUTTON)
-        time.sleep(3)
-
-        tap(*PASSWORD)
-        time.sleep(2)
-
-        #Sometimes its buggin we click it twice to avoid bugging
-        tap(*PASSWORD)
         time.sleep(1)
 
+        print(f"Clearing email field...")
+        delete_input()
+        time.sleep(0.5)
+
+        print(f"Typing email: {email}")
+        input_email(email)
+        time.sleep(1)
+
+        tap(*LOGIN_BUTTON)
+        time.sleep(1)
+
+        tap(*PASSWORD)
+        time.sleep(0.5)
+
         input_password(password)
-        time.sleep(2)
 
         tap(*CONFIRM_LOGIN)
-        time.sleep(25)  # wait longer for game to fully load
-        print("Waiting user Login...")
+        time.sleep(20)  # wait longer for game to fully load
+        print("Waiting user Login... for 20 seconds")
 
         # Dismiss any post-login popups
         for _ in range(3):
             tap(*RANDOM_TAP)
-            time.sleep(2)
+            time.sleep(1)
 
     except KeyboardInterrupt:
         print("Program stopped by user")
@@ -688,61 +456,65 @@ async def re_rally():
         sys.exit(0)
 
 
-def scan_only():
-    """Dry run: scan the current screen and print the LRO table. No taps."""
-    img, profiles, _ = cloud_scan()
-    if img is None:
-        print("❌ scan failed")
-        return
-    acct = db.get("1", {})
-    for p in profiles:
-        p["fail_count"] = acct.get(p["name"], {}).get("fail_count", 0)
-    print(f"\nFound {len(profiles)} profiles:")
-    for p in profiles:
-        print(f"  {p['name']:<12} server={p['server']} hq={p['hq']} "
-              f"rank={p['rank']} status={p['status']} ({p['status_text']}) "
-              f"row_bbox={p['row_bbox']}")
-    print_lro(profiles)
+# ==========================================
+#   PER-EMAIL PROCESSING
+# ==========================================
 
+def process_email(entry, current):
+    """Switch through accounts in order, then restore the first account."""
+    email = entry["email"]
+    base = ACCOUNT_ORDER[email]
+    order = print_plan(email, base, current)
+    save_log(email, current)
 
-def parse_file(path):
-    """Test parser on a saved image: python auto_rally.py --parse image.jpg"""
-    img = cv2.imread(path)
-    if img is None:
-        print(f"❌ cannot read {path}")
-        return
-    rows = ocr_scan(path, image_size=(img.shape[1], img.shape[0]))
-    profiles = parse_profiles(rows)
-    out = []
-    for p in profiles:
-        o = dict(p)
-        o["last_online"] = p["last_online"].isoformat(timespec="seconds") if p["last_online"] else None
-        out.append(o)
-    print(json.dumps(out, indent=2))
+    # First account is already active after login — go straight to the list
+    open_change_admiral()
+
+    for target in order[1:]:
+        current = switch_to(target, base, current)
+        save_log(email, current)
+        open_change_admiral()
+
+    # Restore the very first account at order so the list arrangement
+    # is back to original — no need to re-arrange ever again
+    if current != base[0]:
+        print(f"\n→ Restoring first account {base[0]}")
+        current = switch_to(base[0], base, current)
+        save_log(email, current)
+    else:
+        back_to_game()
 
 
 if __name__ == "__main__":
     try:
-        if "--parse" in sys.argv:
-            parse_file(sys.argv[sys.argv.index("--parse") + 1])
+        start_idx, _ = resolve_resume()
+
+        print(f"Starting email index: {start_idx}")
+        print(f"Starting email: {emails[start_idx]['email']}")
+
+        if start_idx >= len(emails):
             sys.exit(0)
 
-        if "--scan-only" in sys.argv:
-            scan_only()
-            sys.exit(0)
+        done = []
 
-        for account_id in sorted(account):
-            print(f"\n=== Account {account_id} ===")
-            login(account_id)
+        for entry in emails[start_idx:]:
+            email = entry["email"]
+            base = ACCOUNT_ORDER[email]
 
-            # First profile on each account = the one already online -> auto directly
-            #asyncio.run(auto_rally())
-            #asyncio.run(re_rally())
+            print(f"\n=== {email} ===")
 
-            # Then rotate through all offline profiles (OCR + LRO)
-            rotate_profiles(account_id)
+            # Always start from the first account
+            current = base[0]
 
+            login(entry)
+            process_email(entry, current)
             logout()
+
+            done.append(email)
+
+        print(f"\n✅ DONE — processed {len(done)} emails:")
+        for e in done:
+            print(f"   • {e}")
 
     except KeyboardInterrupt:
         print("Program stopped by user")
