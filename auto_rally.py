@@ -12,21 +12,15 @@ import numpy as np
 
 from ocr import ocr_scan
 
-password1 = "Cee12345"
-password2 = "Cee12344"
-
 #ACCOUNT
+CONFIG_PATH = "config.json"
+
+with open(CONFIG_PATH, encoding="utf-8") as f:
+    _cfg = json.load(f)
+
 account = {
-    1: ["cleere1@ssh.com", password1],
-    2: ["cleere4@ssh.com", password1],
-    3: ["cleere6@ssh.com", password1],
-    4: ["cleere5@ssh.com", password2],
-    5: ["cleere6@ssh.com", password1],
-    6: ["cleere7@ssh.com", password1],
-    7: ["cleere8@ssh.com", password1],
-    8: ["cleere9@ssh.com", password1],
-    9: ["cleere10@ssh.com", password1],
-    10: ["cleere12@ssh.com", password1],
+    a["admiral_no"]: [a["name"], a["password"]]
+    for a in _cfg["accounts"]
 }
 
 
