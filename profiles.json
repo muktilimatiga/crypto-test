@@ -1,0 +1,64 @@
+{
+  "1": {
+    "LilBee-02": {
+      "account_id": 1,
+      "fail_count": 0,
+      "hq": 16,
+      "last_login_success": null,
+      "last_online": "2026-11-03T14:46:24",
+      "last_status_text": "Online",
+      "rank": "Gold",
+      "server": 2179,
+      "status": "online",
+      "updated_at": "2026-11-03T14:46:24"
+    },
+    "LilBee-03": {
+      "account_id": 1,
+      "fail_count": 0,
+      "hq": 16,
+      "last_login_success": null,
+      "last_online": "2026-11-03T12:22:14",
+      "last_status_text": "02:24:10 ago",
+      "rank": "Gold",
+      "server": 2179,
+      "status": "offline",
+      "updated_at": "2026-11-03T14:46:24"
+    },
+    "LilBee-04": {
+      "account_id": 1,
+      "fail_count": 0,
+      "hq": 16,
+      "last_login_success": null,
+      "last_online": "2026-11-03T12:20:27",
+      "last_status_text": "02:25:57 ago",
+      "rank": "Gold",
+      "server": 2179,
+      "status": "offline",
+      "updated_at": "2026-11-03T14:46:24"
+    },
+    "LilBee-1": {
+      "account_id": 1,
+      "fail_count": 0,
+      "hq": 16,
+      "last_login_success": null,
+      "last_online": "2026-11-03T14:31:39",
+      "last_status_text": "00:14:45 ago",
+      "rank": "Gold",
+      "server": 2179,
+      "status": "offline",
+      "updated_at": "2026-11-03T14:46:24"
+    },
+    "vhg133": {
+      "account_id": 1,
+      "fail_count": 1,
+      "hq": 17,
+      "last_login_success": false,
+      "last_online": "2026-11-03T12:18:55",
+      "last_status_text": "02:27:29 ago",
+      "rank": "Gold",
+      "server": 2179,
+      "status": "offline",
+      "updated_at": "2026-11-03T14:46:24"
+    }
+  }
+}

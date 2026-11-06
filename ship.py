@@ -303,7 +303,7 @@ try:
         # 4. ship DETECTION
         jx, jy = detect_jet()
         tap(jx, jy)
-        time.sleep(0.15)
+        time.sleep(0.1)
 
         # 5. attack ship
         air_coords = detect_airstrike()
@@ -313,44 +313,46 @@ try:
             print("   ⚠️ Fallback: Tapping approx Air Strike")
             tap(*FALLBACK_AIR) 
 
-        time.sleep(0.3)
+        time.sleep(0.1)
 
         # 6. DEPLOY ACTION
         tap(*DEPLOY_ACTION)
-        time.sleep(0.8)
+        time.sleep(0.4)
 
         # 7. SHIP;l90876t5yr4ewrtyuiytrewq  wertyui
         tap(*SHIP)
         
         # 8. ROYAL FLEET - Tap button location, then check if activated
-        time.sleep(0.9)
-        print("   🚢 Checking Royal Fleet...")
-        tap(*ROYAL_FLEET_BUTTON)  # Fixed coordinates (367, 667)
-        time.sleep(0.6)
+        time.sleep(1)
+       # print("   🚢 Checking Royal Fleet...")
+        # tap(*ROYAL_FLEET_BUTTON)  # Fixed coordinates (367, 667)
+        # time.sleep(0.3)
         
         # Check if Royal Fleet is active by detecting attack button
-        air_coords = detect_airstrike()
-        if air_coords:
+        # air_coords = detect_airstrike()
+        # if air_coords:
             # Royal Fleet IS active - do full attack sequence
-            print("   🎯 Royal Fleet activated! Attacking...")
-            tap(*air_coords)
+          #  print("   🎯 Royal Fleet activated! Attacking...")
+           # tap(*air_coords)
             
-            time.sleep(0.8)
-            tap(*DEPLOY_ACTION)
-            time.sleep(1.2)
-            tap(*SHIP)
+            #time.sleep(1)
+            #tap(*DEPLOY_ACTION)
+            #time.sleep(3)
+            #tap(*SHIP)
             
-            stamina_used += ROYAL_FLEET_COST
-            print(f"   ✅ Royal Fleet attack done (-{ROYAL_FLEET_COST} stamina)")
-        else:
+            #stamina_used += ROYAL_FLEET_COST
+        #    print(f"   ✅ Royal Fleet attack done (-{ROYAL_FLEET_COST} stamina)")
+        #else:
             # Royal Fleet NOT active - button wasn't there
-            print("   ❌ Royal Fleet not active")
+         #   print("   ❌ Royal Fleet not active")
         
         # --- COUNTER LOGIC ---
         stamina_used += STAMINA_COST
         current_cycle += 1
         remaining_stamina = total_stamina - stamina_used
         print(f"✅ Cycle {current_cycle} done. Used: {stamina_used} | Left: ~{remaining_stamina}")
+        time.sleep(3.4)
+        
 
         if remaining_stamina < STAMINA_COST:
             print(f"\n🛑 Stamina depleted! ({current_cycle} cycles completed). Stopping.")
